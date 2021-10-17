@@ -26,12 +26,10 @@ pub fn read_varint<R: Read>(r: &mut R) -> Result<u64, BinverseError> {
 
 /// Writes an unsigned 64-bit varint number to a writer
 pub fn write_varint<W: Write>(mut x: u64, w: &mut W) -> Result<(), BinverseError> {
-    loop {
-        if x < 0x80 { 
-            break;
-        }
+    while x >= 0x80 {
         w.write_all(&[x as u8 | 0x80])?;
         x >>= 7;
     }
+    w.write_all(&[x as u8])?;
     Ok(())
 }
