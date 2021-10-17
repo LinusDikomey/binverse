@@ -1,42 +1,43 @@
 use std::{borrow::Borrow, io::{Read, Write}};
-use crate::streams::{Deserializer, Serializer};
+use crate::{error::{BinverseError, BinverseResult}, streams::{Deserializer, Serializer}};
 
 
 pub trait Serialize {
-    fn serialize<W: Write>(&self, s: &mut Serializer<W>);
+    fn serialize<W: Write>(&self, s: &mut Serializer<W>) -> BinverseResult<()>;
 }
-pub trait Deserialize {
-    fn deserialize<R: Read>(d: &mut Deserializer<R>) -> Self;
+pub trait Deserialize : Sized {
+    fn deserialize<R: Read>(d: &mut Deserializer<R>) -> BinverseResult<Self>;
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub enum SizeBytes {
     One,
     Two,
     Four,
-    Eight
+    Eight,
+    Var
 }
 
 pub trait SizedSerialize {
-    fn serialize<W: Write>(&self, s: &mut Serializer<W>, size: usize);
+    fn serialize<W: Write>(&self, s: &mut Serializer<W>, size: usize) -> BinverseResult<()>;
     fn size(&self) -> usize;
 }
-pub trait SizedDeserialize {
-    fn deserialize<R: Read>(d: &mut Deserializer<R>, size: usize) -> Self;
+pub trait SizedDeserialize : Sized {
+    fn deserialize<R: Read>(d: &mut Deserializer<R>, size: usize) -> BinverseResult<Self>;
 }
 
 impl<T> SizedSerialize for T
 where T: Borrow<str> {
-    fn serialize<W: Write>(&self, s: &mut Serializer<W>, size: usize) {
+    fn serialize<W: Write>(&self, s: &mut Serializer<W>, size: usize) -> BinverseResult<()> {
         // TODO: slicing here could make code more inefficient when the size is usually correct
         s.write(self.borrow()[..size].as_bytes())
     }
     fn size(&self) -> usize { self.borrow().len() }
 }
 impl SizedDeserialize for String {
-    fn deserialize<R: Read>(d: &mut Deserializer<R>, size: usize) -> Self {
+    fn deserialize<R: Read>(d: &mut Deserializer<R>, size: usize) -> BinverseResult<Self> {
         let mut b = vec![0; size];
-        d.read(&mut b);
-        String::from_utf8(b).unwrap()
+        d.read(&mut b)?;
+        String::from_utf8(b).or(Err(BinverseError::InvalidUTF8))
     }
 }

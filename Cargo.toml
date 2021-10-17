@@ -11,9 +11,3 @@ Fast binary serialization with versioning.
 keywords = ["serialization", "binary", "version", "decode", "encode"]
 categories = ["encoding"]
 edition = "2021"
-
-
-[dependencies]
-
-[dev_dependencies]
-rand = "*"

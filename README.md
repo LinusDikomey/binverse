@@ -7,5 +7,5 @@ Provides fast binary serialization with versioning to store data in a backwards-
 ## Features
 - [x] Simple, fast binary serialization
 - [x] Versioning using revision numbers
-- [ ] Error handling
+- [x] Error handling
 - [ ] Procedural macros to avoid boilerplate code

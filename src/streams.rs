@@ -1,32 +1,44 @@
 use std::{io::{Read, Write}};
 
-use crate::serialize::{Deserialize, Serialize, SizeBytes, SizedDeserialize, SizedSerialize};
+use crate::{error::{BinverseError, BinverseResult}, serialize::{Deserialize, Serialize, SizeBytes, SizedDeserialize, SizedSerialize}, varint};
 
 pub struct Serializer<W: Write> {
     w: W,
     revision: u32
 }
 impl<W: Write> Serializer<W> {
-    pub fn new(w: W, revision: u32) -> Self {
+    pub fn new(w: W, revision: u32) -> BinverseResult<Self> {
         let mut s = Self { w, revision };
-        revision.serialize(&mut s);
-        s
+        revision.serialize(&mut s)?;
+        Ok(s)
     }
-    pub fn write(&mut self, buf: &[u8]) {
-        self.w.write_all(buf).unwrap();
+    pub fn write(&mut self, buf: &[u8]) -> BinverseResult<()> {
+        self.w.write_all(buf)?;
+        Ok(())
     }
-    pub fn write_size(&mut self, sb: SizeBytes, size: usize) {
+    pub fn write_size(&mut self, sb: SizeBytes, size: usize) -> BinverseResult<()> {
+        use SizeBytes::*;
+        let max_size = match sb {
+            One         =>  u8::MAX as usize,
+            Two         => u16::MAX as usize,
+            Four        => u32::MAX as usize,
+            Eight | Var => u64::MAX as usize,   
+        };
+        if size > max_size {
+            return Err(BinverseError::SizeExceeded { limit: sb, found: size });
+        }
         match sb {
-            SizeBytes::One   => { debug_assert!(size as  u8 <=  u8::MAX); (size as  u8).serialize(self) },
-            SizeBytes::Two   => { debug_assert!(size as u16 <= u16::MAX); (size as u16).serialize(self) },
-            SizeBytes::Four  => { debug_assert!(size as u32 <= u32::MAX); (size as u32).serialize(self) },
-            SizeBytes::Eight => { debug_assert!(size as u64 <= u64::MAX); (size as u64).serialize(self) },
+            SizeBytes::One   => (size as  u8).serialize(self),
+            SizeBytes::Two   => (size as u16).serialize(self),
+            SizeBytes::Four  => (size as u32).serialize(self),
+            SizeBytes::Eight => (size as u64).serialize(self),
+            SizeBytes::Var   => varint::write_varint(size as u64, &mut self.w)
         }
     }
-    pub fn serialize_sized<T: SizedSerialize>(&mut self, sb: SizeBytes, t: &T) {
+    pub fn serialize_sized<T: SizedSerialize>(&mut self, sb: SizeBytes, t: &T) -> BinverseResult<()> {
         let size = t.size();
-        self.write_size(sb, size);
-        t.serialize(self, size);
+        self.write_size(sb, size)?;
+        t.serialize(self, size)
     }
     pub fn revision(&self) -> u32 { self.revision }
     pub fn finish(self) -> W { self.w }
@@ -38,28 +50,30 @@ pub struct Deserializer<R: Read> {
 }
 
 impl<R: Read> Deserializer<R> {
-    pub fn new(r: R) -> Self {
+    pub fn new(r: R) -> BinverseResult<Self> {
         let mut d = Self {
             r,
             revision: 0
         };
-        d.revision = d.deserialize();
-        d
+        d.revision = d.deserialize()?;
+        Ok(d)
     }
-    pub fn read(&mut self, buf: &mut [u8]) {
-        self.r.read_exact(buf).unwrap();
+    pub fn read(&mut self, buf: &mut [u8]) -> BinverseResult<()> {
+        self.r.read_exact(buf)?;
+        Ok(())
     }
-    pub fn read_size(&mut self, sb: SizeBytes) -> usize  {
-        match sb {
-            SizeBytes::One   => self.deserialize::< u8>() as usize,
-            SizeBytes::Two   => self.deserialize::<u16>() as usize,
-            SizeBytes::Four  => self.deserialize::<u32>() as usize,
-            SizeBytes::Eight => self.deserialize::<u64>() as usize,
-        }
+    pub fn read_size(&mut self, sb: SizeBytes) -> BinverseResult<usize>  {
+        Ok(match sb {
+            SizeBytes::One   => self.deserialize::< u8>()? as usize,
+            SizeBytes::Two   => self.deserialize::<u16>()? as usize,
+            SizeBytes::Four  => self.deserialize::<u32>()? as usize,
+            SizeBytes::Eight => self.deserialize::<u64>()? as usize,
+            SizeBytes::Var   => varint::read_varint(&mut self.r)? as usize
+        })
     }
-    pub fn deserialize<T: Deserialize>(&mut self) -> T { T::deserialize(self) }
-    pub fn deserialize_sized<T: SizedDeserialize>(&mut self, sb: SizeBytes) -> T {
-        let size = self.read_size(sb);
+    pub fn deserialize<T: Deserialize>(&mut self) -> BinverseResult<T> { T::deserialize(self) }
+    pub fn deserialize_sized<T: SizedDeserialize>(&mut self, sb: SizeBytes) -> BinverseResult<T> {
+        let size = self.read_size(sb)?;
         T::deserialize(self, size)
     }
     pub fn revision(&self) -> u32 { self.revision }
