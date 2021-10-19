@@ -9,7 +9,8 @@ pub enum BinverseError {
     SizeExceeded {
         limit: SizeBytes, 
         found: usize
-    }
+    },
+    InvalidData
 }
 
 pub type BinverseResult<T> = Result<T, BinverseError>;

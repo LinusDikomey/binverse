@@ -1,6 +1,7 @@
 use std::io::{Read, Write};
 use crate::error::BinverseError;
 
+/// The maximum length in bytes of a varint (u64)
 pub const MAX_LEN: usize = 10;
 
 /// Reads an unsigned 64-bit varint number from a Reader
@@ -24,7 +25,7 @@ pub fn read_varint<R: Read>(r: &mut R) -> Result<u64, BinverseError> {
     Err(BinverseError::VarIntOverflow)
 }
 
-/// Writes an unsigned 64-bit varint number to a writer
+/// Writes an unsigned 64-bit varint number to a Writer
 pub fn write_varint<W: Write>(mut x: u64, w: &mut W) -> Result<(), BinverseError> {
     while x >= 0x80 {
         w.write_all(&[x as u8 | 0x80])?;

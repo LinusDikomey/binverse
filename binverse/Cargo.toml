@@ -1,0 +1,20 @@
+[package]
+name = "binverse"
+version = "0.3.0"
+authors = ["Linus Dikomey"]
+license = "MIT"
+readme = "README.md"
+repository = "https://github.com/LinusDikomey/binverse"
+description = """
+Fast binary serialization with versioning.
+"""
+keywords = ["serialization", "binary", "version", "decode", "encode"]
+categories = ["encoding"]
+edition = "2021"
+
+[features]
+derive = ["binverse_derive"]
+default_features = ["binverse_derive"]
+
+[dependencies]
+binverse_derive = { version = "0.3.0", path = "../binverse_derive", optional = true }
