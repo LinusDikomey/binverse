@@ -2,7 +2,9 @@
 
 Provides fast binary serialization with versioning to store data in a backwards-compatible, compact way.
 
-Right now, the crate is still work in progress and I wouldn't recommend using it for larger projects as breaking changes and problems might occur.
+Right now, the crate is still **work in progress** and I wouldn't recommend using it for larger projects as breaking changes and problems might occur.
+**Warning: until version 1.0, nothing is guaranteed to be backwards compatible!**
+
 
 ## Features
 - [x] Simple, fast binary serialization
@@ -10,7 +12,7 @@ Right now, the crate is still work in progress and I wouldn't recommend using it
 - [x] Error handling
 - [x] Procedural macros to avoid boilerplate code
 - [ ] Versioning/size attributes using macros
-
+- [ ] Documentation
 
 ## Basic example
 
@@ -64,6 +66,4 @@ fn main() {
     // Both versions match
     assert_eq!(example, example_deserialized);
 }
-
-
 ```
