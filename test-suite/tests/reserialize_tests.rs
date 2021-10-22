@@ -1,4 +1,4 @@
-use std::fmt::Debug;
+use std::{fmt::Debug, marker::PhantomData};
 
 use binverse::{serialize::{Deserialize, Serialize, SizeBytes, SizedSerialize, SizedDeserialize}, streams::{Deserializer, Serializer}};
 use binverse_derive::serializable;
@@ -92,15 +92,16 @@ fn primitive_serialization() {
 #[test]
 fn structs() {
     #[serializable]
-    #[derive(PartialEq, Debug, Clone)]
+    #[derive(PartialEq, Debug, Clone, Default)]
     struct Vec3 {
-        x: f32,
-        y: f32,
+        x: binverse::Added<f32, 10>,
+        y: binverse::Removed<f32, 12>,
         z: f32
     }
+
     test_all(&[
-        Vec3 { x: 1354.124, y: -124.32, z: 124.12 },
-        Vec3 { x: f32::MAX, y: 0.0, z: 0.0 }
+        Vec3 { x: 1354.124, y: binverse::Removed(PhantomData)/*-124.32*/, z: 124.12 },
+        Vec3 { x: f32::MAX, y: binverse::Removed(PhantomData)/*0.0*/, z: 0.0 }
     ]);
 
     #[serializable]
@@ -121,6 +122,24 @@ fn structs() {
             name: String::from(format!("An entity with a very long name: {}", "VeryLongName".repeat(10000))),
             alive: false
         },
-    ])
+    ]);
+
+
+    #[derive(Debug, Clone, PartialEq)]
+    #[serializable]
+    struct Test1;
+    #[derive(Debug, Clone, PartialEq)]
+    #[serializable]
+    struct Test2(f32);
+    
+    reserialize_test(Test1);
+    test_all(&[
+        Test2(1252.135),
+        Test2(-352.10),
+        Test2(124.21),
+        Test2(1294.65),
+        Test2(f32::INFINITY)
+    ]);
+    
 
 }

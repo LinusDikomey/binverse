@@ -1,6 +1,6 @@
 use std::fmt::Debug;
 
-use binverse::{serialize::Serialize, streams::{Deserializer, Serializer}};
+use binverse::{Added, Removed, serialize::Serialize, streams::{Deserializer, Serializer}};
 use binverse_derive::serializable;
 
 #[test]
@@ -9,13 +9,13 @@ fn basic_struct() {
     #[derive(Debug, PartialEq)]
     struct Example {
         a: i32,
-        b: f32,
+        b: Removed<f32, 4>,
         c: String
     }
 
     let example = Example {
         a: -1253891,
-        b: 44223.125,
+        //b: 44223.125,
         c: String::from("Hello binverse!")
     };
 
