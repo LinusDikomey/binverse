@@ -1,4 +1,4 @@
-use std::{fmt::Debug, marker::PhantomData};
+use std::fmt::Debug;
 
 use binverse::{serialize::{Deserialize, Serialize, SizeBytes, SizedSerialize, SizedDeserialize}, streams::{Deserializer, Serializer}};
 use binverse_derive::serializable;
@@ -94,14 +94,14 @@ fn structs() {
     #[serializable]
     #[derive(PartialEq, Debug, Clone, Default)]
     struct Vec3 {
-        x: binverse::Added<f32, 10>,
-        y: binverse::Removed<f32, 12>,
+        x: f32,
+        y: f32,
         z: f32
     }
 
     test_all(&[
-        Vec3 { x: 1354.124, y: binverse::Removed(PhantomData)/*-124.32*/, z: 124.12 },
-        Vec3 { x: f32::MAX, y: binverse::Removed(PhantomData)/*0.0*/, z: 0.0 }
+        Vec3 { x: 1354.124, y: -124.32, z: 124.12 },
+        Vec3 { x: f32::MAX, y: 0.0, z: 0.0 }
     ]);
 
     #[serializable]
