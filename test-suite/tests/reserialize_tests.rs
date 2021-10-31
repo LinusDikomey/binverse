@@ -32,7 +32,7 @@ where T : Serialize + Deserialize + PartialEq + Debug + Clone {
 
 #[test]
 fn primitive_serialization() {
-    use binverse::error::BinverseError;
+    use binverse::error::RenameSymbol;
 
     
 
@@ -83,7 +83,7 @@ fn primitive_serialization() {
 
     let mut s = Serializer::new(Vec::new(), 0).unwrap();
     match s.serialize_sized(SizeBytes::One, &"a".repeat(256)).unwrap_err() {
-        BinverseError::SizeExceeded { limit: SizeBytes::One, found: 256 } => (),
+        RenameSymbol::SizeExceeded { limit: SizeBytes::One, found: 256 } => (),
         err => panic!("Invalid error: {:?}", err)
     }
 }

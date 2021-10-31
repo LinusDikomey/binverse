@@ -1,9 +1,9 @@
-use std::{io::{Read, Write}};
+use std::io::{Read, Write};
 
-use crate::{error::{BinverseError, BinverseResult}, serialize::{Deserialize, Serialize, SizeBytes, SizedDeserialize, SizedSerialize}, varint};
+use crate::{error::{RenameSymbol, BinverseResult}, serialize::{Deserialize, Serialize, SizeBytes, SizedDeserialize, SizedSerialize}, varint};
 
 pub struct Serializer<W: Write> {
-    w: W,
+    pub(crate) w: W,
     revision: u32
 }
 impl<W: Write> Serializer<W> {
@@ -25,14 +25,14 @@ impl<W: Write> Serializer<W> {
             Eight | Var => u64::MAX as usize,   
         };
         if size > max_size {
-            return Err(BinverseError::SizeExceeded { limit: sb, found: size });
+            return Err(RenameSymbol::SizeExceeded { limit: sb, found: size });
         }
         match sb {
             SizeBytes::One   => (size as  u8).serialize(self),
             SizeBytes::Two   => (size as u16).serialize(self),
             SizeBytes::Four  => (size as u32).serialize(self),
             SizeBytes::Eight => (size as u64).serialize(self),
-            SizeBytes::Var   => varint::write_varint(size as u64, &mut self.w)
+            SizeBytes::Var   => varint::write(size as u64, &mut self.w)
         }
     }
     pub fn serialize_sized<T: SizedSerialize>(&mut self, sb: SizeBytes, t: &T) -> BinverseResult<()> {
@@ -45,7 +45,7 @@ impl<W: Write> Serializer<W> {
 }
 
 pub struct Deserializer<R: Read> {
-    r: R,
+    pub(crate) r: R,
     revision: u32
 }
 
@@ -68,7 +68,7 @@ impl<R: Read> Deserializer<R> {
             SizeBytes::Two   => self.deserialize::<u16>()? as usize,
             SizeBytes::Four  => self.deserialize::<u32>()? as usize,
             SizeBytes::Eight => self.deserialize::<u64>()? as usize,
-            SizeBytes::Var   => varint::read_varint(&mut self.r)? as usize
+            SizeBytes::Var   => varint::read(&mut self.r)? as usize
         })
     }
     pub fn deserialize<T: Deserialize>(&mut self) -> BinverseResult<T> { T::deserialize(self) }

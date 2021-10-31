@@ -5,9 +5,9 @@ fn varints() {
 
     fn test_varint(x: u64) {
         let mut c = Cursor::new(vec![0; 11]);
-        varint::write_varint(x, &mut c).unwrap();
+        varint::write(x, &mut c).unwrap();
         c.rewind().unwrap();
-        let x2 = varint::read_varint(&mut c).unwrap_or_else(|e| panic!("Got error while testing varints: {:?}, with value: {}, bytes: {:?}", e, x, c.clone().into_inner()));
+        let x2 = varint::read(&mut c).unwrap_or_else(|e| panic!("Got error while testing varints: {:?}, with value: {}, bytes: {:?}", e, x, c.clone().into_inner()));
         if x != x2 {
             panic!("Mismatched values while testing varints with value: {} != {}, bytes: {:?}", x, x2, c.into_inner())
         }

@@ -17,4 +17,4 @@ derive = ["binverse_derive"]
 default_features = ["binverse_derive"]
 
 [dependencies]
-binverse_derive = { version = "0.3.0", path = "../binverse_derive", optional = true }
+binverse_derive = { version = "=0.3.0", path = "../binverse_derive", optional = true }

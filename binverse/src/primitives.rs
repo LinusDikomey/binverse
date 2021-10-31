@@ -1,6 +1,6 @@
-use std::{io::{Read, Write}};
+use std::io::{Read, Write};
 
-use crate::{error::{BinverseError, BinverseResult}, serialize::{Deserialize, Serialize, SizeBytes, SizedDeserialize, SizedSerialize}, streams::{Deserializer, Serializer}};
+use crate::{error::{RenameSymbol, BinverseResult}, serialize::{Deserialize, Serialize, SizeBytes, SizedDeserialize, SizedSerialize}, streams::{Deserializer, Serializer}};
 
 impl Serialize for bool {
     fn serialize<W: Write>(&self, s: &mut Serializer<W>) -> BinverseResult<()> {
@@ -14,7 +14,7 @@ impl Deserialize for bool {
         match buf[0] {
             0 => Ok(false),
             1 => Ok(true),
-            _ => Err(BinverseError::InvalidData)
+            _ => Err(RenameSymbol::InvalidData)
         }
     }
 }
@@ -153,7 +153,7 @@ impl SizedDeserialize for String {
     fn deserialize<R: Read>(d: &mut Deserializer<R>, size: usize) -> BinverseResult<Self> {
         let mut b = vec![0; size];
         d.read(&mut b)?;
-        String::from_utf8(b).or(Err(BinverseError::InvalidUTF8))
+        String::from_utf8(b).or(Err(RenameSymbol::InvalidUTF8))
     }
 }
 
@@ -172,6 +172,6 @@ where T: Serialize {
 impl<T> SizedDeserialize for Vec<T>
 where T: Deserialize {
     fn deserialize<R: Read>(d: &mut Deserializer<R>, size: usize) -> BinverseResult<Self> {
-        (0..size).map(|_| d.deserialize()).collect::<Result<Vec<_>, _>>()
+        (0..size).map(|_| d.deserialize()).collect::<BinverseResult<Vec<_>>>()
     }
 }

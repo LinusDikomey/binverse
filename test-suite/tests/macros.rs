@@ -41,11 +41,24 @@ fn basic_struct() {
 
 #[test]
 fn simple_macro_attribs() {
+    // struct with named fields
     #[serializable]
-    struct Example {
+    struct Test1 {
         a: Added<3, i32>,
-        b: Removed<2, i32>
+        b: Removed<2, i32>,
+        c: SizeBytes<8, String>
     }
+
+    // tuple struct
+    #[serializable]
+    struct Test2 (
+        Added<3, i32>,
+        Removed<5, Added<3, SizeBytes<1, String>>>
+    );
+
+    // unit struct
+    #[serializable]
+    struct Test3;
 }
 
 #[test]
@@ -131,4 +144,61 @@ fn versioning() {
         });
         assert_eq!(d1.finish().len(), 0);
     };
+}
+
+
+#[test]
+fn size_bytes() {
+    let str_a = "Hello";
+    let str_b = "Goodbye";
+    let str_c = "binverse";
+    let str_d = "äöü, 😃, 你好，世界";
+    
+    // revision 0
+    let data0 = {
+        #[serializable]
+        struct Example {
+            a: SizeBytes<1, String>,
+            b: SizeBytes<2, String>,
+            c: SizeBytes<4, String>,
+            d: SizeBytes<8, String>
+        }
+
+        let mut s0 = Serializer::new(Vec::new(), 0).unwrap();
+        Example {
+            a: str_a.to_owned(),
+            b: str_b.to_owned(),
+            c: str_c.to_owned(),
+            d: str_d.to_owned()
+        }.serialize(&mut s0).unwrap();
+        let data0 = s0.finish();
+        
+        assert_eq!(data0.len(),
+            4 + // revision
+            1 + str_a.len() + 
+            2 + str_b.len() + 
+            4 + str_c.len() +
+            8 + str_d.len()
+        );
+        data0
+    };
+
+    // revision 1
+    {
+        #[serializable]
+        #[derive(PartialEq, Debug)]
+        struct Example {
+            a: Removed<1, SizeBytes<1, String>>,
+            b: SizeBytes<2, String>,
+            c: Removed<1, SizeBytes<4, String>>,
+            d: SizeBytes<8, String>
+        }
+
+        let mut d = Deserializer::new(data0.as_slice()).unwrap();
+        let example0: Example = d.deserialize().unwrap();
+        assert_eq!(example0, Example {
+            b: str_b.to_owned(),
+            d: str_d.to_owned()
+        });
+    }
 }

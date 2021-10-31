@@ -17,6 +17,18 @@ pub enum SizeBytes {
     Eight,
     Var
 }
+impl SizeBytes {
+    pub fn to_str(&self) -> &'static str {
+        use SizeBytes::*;
+        match self {
+            One => "One",
+            Two => "Two",
+            Four => "Four",
+            Eight => "Eight",
+            Var => "Var"
+        }
+    }
+}
 
 pub trait SizedSerialize {
     fn serialize<W: Write>(&self, s: &mut Serializer<W>, size: usize) -> BinverseResult<()>;

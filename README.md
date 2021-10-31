@@ -49,10 +49,11 @@ fn main() {
     
     // The length of the data is pretty predictable:
     assert_eq!(data.len(), 
-        4    // bytes for revision so the data can be deserialized in future versions 
-        + 4  // a: i32       
+        4    // bytes for revision so the data can be read in future versions
+        + 4  // a: i32
         + 4  // b: f32
-        + 1  // length of the following string (saved using VarInt, can be changed to a constant byte size)
+        + 1  // length of the following string
+             // (saved using VarInt, can be changed to a constant byte size)
         // the bytes of the string:
         + "Hello binverse!".len()
     );
