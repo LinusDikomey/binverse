@@ -2,11 +2,11 @@ use std::io::{Read, Write};
 use crate::{error::BinverseResult, streams::{Deserializer, Serializer}};
 
 
-pub trait Serialize {
-    fn serialize<W: Write>(&self, s: &mut Serializer<W>) -> BinverseResult<()>;
+pub trait Serialize<W: Write> {
+    fn serialize(&self, s: &mut Serializer<W>) -> BinverseResult<()>;
 }
-pub trait Deserialize : Sized {
-    fn deserialize<R: Read>(d: &mut Deserializer<R>) -> BinverseResult<Self>;
+pub trait Deserialize<R: Read> : Sized {
+    fn deserialize(d: &mut Deserializer<R>) -> BinverseResult<Self>;
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -30,10 +30,12 @@ impl SizeBytes {
     }
 }
 
-pub trait SizedSerialize {
-    fn serialize<W: Write>(&self, s: &mut Serializer<W>, size: usize) -> BinverseResult<()>;
+pub trait SizedSerialize<W> : Serialize<W>
+where W: Write {
+    fn serialize_sized(&self, s: &mut Serializer<W>, size: usize) -> BinverseResult<()>;
     fn size(&self) -> usize;
 }
-pub trait SizedDeserialize : Sized {
-    fn deserialize<R: Read>(d: &mut Deserializer<R>, size: usize) -> BinverseResult<Self>;
+pub trait SizedDeserialize<R> : Deserialize<R> + Sized
+where R: Read {
+    fn deserialize_sized(d: &mut Deserializer<R>, size: usize) -> BinverseResult<Self>;
 }

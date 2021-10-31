@@ -362,16 +362,16 @@ fn impl_serializable(ast: Item) -> TokenStream {
 
                 #[automatically_derived]
                 #[allow(unused_qualifications)]
-                impl binverse::serialize::Serialize for #ident {
-                    fn serialize<W: std::io::Write>(&self, s: &mut binverse::streams::Serializer<W>) -> binverse::error::BinverseResult<()> {
+                impl<W: std::io::Write> binverse::serialize::Serialize<W> for #ident {
+                    fn serialize(&self, s: &mut binverse::streams::Serializer<W>) -> binverse::error::BinverseResult<()> {
                         #serialize
                         Ok(())
                     }
                 }
                 #[automatically_derived]
                 #[allow(unused_qualifications)]
-                impl binverse::serialize::Deserialize for #ident {
-                    fn deserialize<R: std::io::Read>(d: &mut binverse::streams::Deserializer<R>) -> binverse::error::BinverseResult<Self> {
+                impl<R: std::io::Read> binverse::serialize::Deserialize<R> for #ident {
+                    fn deserialize(d: &mut binverse::streams::Deserializer<R>) -> binverse::error::BinverseResult<Self> {
                         #deserialize
                     }
                 }

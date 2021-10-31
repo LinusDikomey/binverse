@@ -2,13 +2,13 @@ use std::io::{Read, Write};
 
 use crate::{error::{RenameSymbol, BinverseResult}, serialize::{Deserialize, Serialize, SizeBytes, SizedDeserialize, SizedSerialize}, streams::{Deserializer, Serializer}};
 
-impl Serialize for bool {
-    fn serialize<W: Write>(&self, s: &mut Serializer<W>) -> BinverseResult<()> {
+impl<W: Write> Serialize<W> for bool {
+    fn serialize(&self, s: &mut Serializer<W>) -> BinverseResult<()> {
         s.write(&[*self as u8])
     }
 }
-impl Deserialize for bool {
-    fn deserialize<R: Read>(d: &mut Deserializer<R>) -> BinverseResult<Self> {
+impl<R: Read> Deserialize<R> for bool {
+    fn deserialize(d: &mut Deserializer<R>) -> BinverseResult<Self> {
         let mut buf = [0];
         d.read(&mut buf)?;
         match buf[0] {
@@ -23,13 +23,13 @@ impl Deserialize for bool {
 macro_rules! number_impls {
     ($($t: ty, $bytes: expr),*) => {
         $(
-            impl Serialize for $t {
-                fn serialize<W: Write>(&self, s: &mut Serializer<W>) -> BinverseResult<()> {
+            impl<W: Write> Serialize<W> for $t {
+                fn serialize(&self, s: &mut Serializer<W>) -> BinverseResult<()> {
                     s.write(&self.to_le_bytes())
                 }
             }
-            impl Deserialize for $t {
-                fn deserialize<R: Read>(d: &mut Deserializer<R>) -> BinverseResult<Self> {
+            impl<R: Read> Deserialize<R> for $t {
+                fn deserialize(d: &mut Deserializer<R>) -> BinverseResult<Self> {
                     let mut b = [0; $bytes];
                     d.read(&mut b)?;
                     Ok(<$t>::from_le_bytes(b))
@@ -48,9 +48,9 @@ number_impls!(
     f64, 8
 );
 
-impl<T, const N: usize> Serialize for [T; N]
-where T: Serialize {
-    fn serialize<W: Write>(&self, s: &mut Serializer<W>) -> BinverseResult<()> {
+impl<W: Write, T, const N: usize> Serialize<W> for [T; N]
+where T: Serialize<W> {
+    fn serialize(&self, s: &mut Serializer<W>) -> BinverseResult<()> {
         for elem in self {
             elem.serialize(s)?;
         }
@@ -63,9 +63,8 @@ where T: Serialize {
 macro_rules! array_deserialize {
     ($($n: expr, $($i: ident)*);*) => {
         $(
-            impl<T> Deserialize for [T; $n]
-            where T: Deserialize {
-                fn deserialize<R: Read>(d: &mut Deserializer<R>) -> BinverseResult<Self> {
+            impl<R: Read, T: Deserialize<R>> Deserialize<R> for [T; $n] {
+                fn deserialize(d: &mut Deserializer<R>) -> BinverseResult<Self> {
                     $(
                         let $i: T = d.deserialize()?;
                     )*
@@ -119,22 +118,20 @@ array_deserialize! {
 // implement Serialize/Deserialize with a default size of 'SizeBytes::Var' for 
 // anything implementing SizedSerialize/SizedSerialize:
 
-impl<T> Serialize for T
-where T: SizedSerialize {
-    fn serialize<W: Write>(&self, s: &mut Serializer<W>) -> BinverseResult<()> {
+/*impl<W: Write, T: SizedDeserialize<W>> Serialize<W> for T {
+    fn serialize(&self, s: &mut Serializer<W>) -> BinverseResult<()> {
         s.serialize_sized(SizeBytes::Var, self)
     }
 }
-impl<T> Deserialize for T
-where T: SizedDeserialize {
-    fn deserialize<R: Read>(d: &mut Deserializer<R>) -> BinverseResult<Self> {
+impl<R: Read, T: SizedDeserialize<R>> Deserialize<R> for T {
+    fn deserialize(d: &mut Deserializer<R>) -> BinverseResult<Self> {
         d.deserialize_sized(SizeBytes::Var)   
     }
-}
+}*/
 
 // str/String
-impl SizedSerialize for str {
-    fn serialize<W: Write>(&self, s: &mut Serializer<W>, size: usize) -> BinverseResult<()> {
+impl<W: Write> SizedSerialize<W> for &str {
+    fn serialize_sized(&self, s: &mut Serializer<W>, size: usize) -> BinverseResult<()> {
         s.write(self[..size].as_bytes())
     }
     fn size(&self) -> usize {
@@ -142,24 +139,52 @@ impl SizedSerialize for str {
     }
 }
 
-impl SizedSerialize for String {
-    fn serialize<W: Write>(&self, s: &mut Serializer<W>, size: usize) -> BinverseResult<()> {
+macro_rules! ser_sized {
+    ($({$t: ty [$($generic: tt),*] [$([$($tree: tt)*]),*]})*) => {
+        $(
+            impl<W: Write, $($generic),*> Serialize<W> for $t 
+            where $($($tree)*)* {
+                fn serialize(&self, s: &mut Serializer<W>) -> BinverseResult<()> {
+                    s.serialize_sized(SizeBytes::Var, self)
+                }
+            }
+        )*
+    }
+}
+macro_rules! deser_sized {
+    ($({$t: ty [$($generic: tt),*] [$([$($tree: tt)*]),*]})*) => {
+        $(
+            impl<R: Read, $($generic),*> Deserialize<R> for $t 
+            where $($($tree)*)* {
+                fn deserialize(d: &mut Deserializer<R>) -> BinverseResult<Self> {
+                    d.deserialize_sized(SizeBytes::Var)
+                }
+            }
+        )*
+    }
+}
+
+ser_sized!{ {&str [][]} {String [][]} {&[T] [T] [[T: Serialize<W>]]} {Vec<T> [T] [[T: Serialize<W>]]} }
+deser_sized!{ {String [][]} {Vec<T> [T] [[T: Deserialize<R>]]} }
+
+impl<W: Write> SizedSerialize<W> for String {
+    fn serialize_sized(&self, s: &mut Serializer<W>, size: usize) -> BinverseResult<()> {
         // TODO: slicing here could make code more inefficient when the size is usually correct
         s.write(self[..size].as_bytes())
     }
     fn size(&self) -> usize { self.len() }
 }
-impl SizedDeserialize for String {
-    fn deserialize<R: Read>(d: &mut Deserializer<R>, size: usize) -> BinverseResult<Self> {
+impl<R: Read> SizedDeserialize<R> for String {
+    fn deserialize_sized(d: &mut Deserializer<R>, size: usize) -> BinverseResult<Self> {
         let mut b = vec![0; size];
         d.read(&mut b)?;
         String::from_utf8(b).or(Err(RenameSymbol::InvalidUTF8))
     }
 }
 
-impl<T> SizedSerialize for &[T]
-where T: Serialize {
-    fn serialize<W: Write>(&self, s: &mut Serializer<W>, size: usize) -> BinverseResult<()> {
+impl<W: Write, T> SizedSerialize<W> for &[T]
+where T: Serialize<W> {
+    fn serialize_sized(&self, s: &mut Serializer<W>, size: usize) -> BinverseResult<()> {
         for elem in &self[0..size] {
             elem.serialize(s)?;
         }
@@ -169,9 +194,16 @@ where T: Serialize {
         self.len()
     }
 }
-impl<T> SizedDeserialize for Vec<T>
-where T: Deserialize {
-    fn deserialize<R: Read>(d: &mut Deserializer<R>, size: usize) -> BinverseResult<Self> {
+impl<W: Write, T: Serialize<W>> SizedSerialize<W> for Vec<T> {
+    fn serialize_sized(&self, s: &mut Serializer<W>, size: usize) -> BinverseResult<()> {
+        self.as_slice().serialize_sized(s, size)
+    }
+    fn size(&self) -> usize {
+        self.len()
+    }
+}
+impl<R: Read, T: Deserialize<R>> SizedDeserialize<R> for Vec<T> {
+    fn deserialize_sized(d: &mut Deserializer<R>, size: usize) -> BinverseResult<Self> {
         (0..size).map(|_| d.deserialize()).collect::<BinverseResult<Vec<_>>>()
     }
 }

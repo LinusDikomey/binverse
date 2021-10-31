@@ -40,10 +40,10 @@ impl<W: Write> Serializer<W> {
             SizeBytes::Var   => varint::write(size as u64, &mut self.w)
         }
     }
-    pub fn serialize_sized<T: SizedSerialize>(&mut self, sb: SizeBytes, t: &T) -> BinverseResult<()> {
+    pub fn serialize_sized<T: SizedSerialize<W>>(&mut self, sb: SizeBytes, t: &T) -> BinverseResult<()> {
         let size = t.size();
         self.write_size(sb, size)?;
-        t.serialize(self, size)
+        t.serialize_sized(self, size)
     }
     //pub fn revision(&self) -> u32 { self.revision }
     pub fn finish(self) -> W { self.w }
@@ -84,10 +84,10 @@ impl<R: Read> Deserializer<R> {
             SizeBytes::Var   => varint::read(&mut self.r)? as usize
         })
     }
-    pub fn deserialize<T: Deserialize>(&mut self) -> BinverseResult<T> { T::deserialize(self) }
-    pub fn deserialize_sized<T: SizedDeserialize>(&mut self, sb: SizeBytes) -> BinverseResult<T> {
+    pub fn deserialize<T: Deserialize<R>>(&mut self) -> BinverseResult<T> { T::deserialize(self) }
+    pub fn deserialize_sized<T: SizedDeserialize<R>>(&mut self, sb: SizeBytes) -> BinverseResult<T> {
         let size = self.read_size(sb)?;
-        T::deserialize(self, size)
+        T::deserialize_sized(self, size)
     }
     pub fn revision(&self) -> u32 { self.revision }
     pub fn finish(self) -> R { self.r }
