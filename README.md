@@ -11,7 +11,7 @@ Right now, the crate is still **work in progress** and I wouldn't recommend usin
 - [x] Versioning using revision numbers
 - [x] Error handling
 - [x] Procedural macros to avoid boilerplate code
-- [ ] Versioning/size attributes using macros
+- [x] Versioning/size attributes using macros
 - [ ] Documentation
 
 ## Basic example

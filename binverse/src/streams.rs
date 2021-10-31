@@ -4,14 +4,19 @@ use crate::{error::{RenameSymbol, BinverseResult}, serialize::{Deserialize, Seri
 
 pub struct Serializer<W: Write> {
     pub(crate) w: W,
-    revision: u32
 }
 impl<W: Write> Serializer<W> {
     pub fn new(w: W, revision: u32) -> BinverseResult<Self> {
-        let mut s = Self { w, revision };
+        let mut s = Self { w };
         revision.serialize(&mut s)?;
         Ok(s)
     }
+
+    /// Create a new Serializer, but without writing the revision into the stream
+    pub fn new_no_revision(w: W) -> Self {
+        Self { w }
+    }
+
     pub fn write(&mut self, buf: &[u8]) -> BinverseResult<()> {
         self.w.write_all(buf)?;
         Ok(())
@@ -40,7 +45,7 @@ impl<W: Write> Serializer<W> {
         self.write_size(sb, size)?;
         t.serialize(self, size)
     }
-    pub fn revision(&self) -> u32 { self.revision }
+    //pub fn revision(&self) -> u32 { self.revision }
     pub fn finish(self) -> W { self.w }
 }
 
@@ -58,6 +63,14 @@ impl<R: Read> Deserializer<R> {
         d.revision = d.deserialize()?;
         Ok(d)
     }
+
+    /// Create a new Deserializer, but without reading the revision from the stream.
+    /// Instead, the revision has to be passed. Providing data created in a different
+    /// revision than specified can lead to invalid data or errors
+    pub fn new_no_revision(r: R, revision: u32) -> Self {
+        Self { r, revision }
+    }
+    
     pub fn read(&mut self, buf: &mut [u8]) -> BinverseResult<()> {
         self.r.read_exact(buf)?;
         Ok(())
