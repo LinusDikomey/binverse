@@ -1,6 +1,6 @@
 use std::io::{Read, Write};
 
-use crate::{error::{RenameSymbol, BinverseResult}, serialize::{Deserialize, Serialize, SizeBytes, SizedDeserialize, SizedSerialize}, varint};
+use crate::{error::{BinverseError, BinverseResult}, serialize::{Deserialize, Serialize, SizeBytes, SizedDeserialize, SizedSerialize}, varint};
 
 pub struct Serializer<W: Write> {
     pub(crate) w: W,
@@ -30,7 +30,7 @@ impl<W: Write> Serializer<W> {
             Eight | Var => u64::MAX as usize,   
         };
         if size > max_size {
-            return Err(RenameSymbol::SizeExceeded { limit: sb, found: size });
+            return Err(BinverseError::SizeExceeded { limit: sb, found: size });
         }
         match sb {
             SizeBytes::One   => (size as  u8).serialize(self),

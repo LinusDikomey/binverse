@@ -2,7 +2,7 @@ use crate::serialize::SizeBytes;
 
 
 #[derive(Debug)]
-pub enum RenameSymbol {
+pub enum BinverseError {
     IO(std::io::Error),
     VarIntOverflow,
     InvalidUTF8,
@@ -13,10 +13,10 @@ pub enum RenameSymbol {
     InvalidData
 }
 
-pub type BinverseResult<T> = Result<T, RenameSymbol>;
+pub type BinverseResult<T> = Result<T, BinverseError>;
 
-impl From<std::io::Error> for RenameSymbol {
-    fn from(e: std::io::Error) -> RenameSymbol {
-        RenameSymbol::IO(e)
+impl From<std::io::Error> for BinverseError {
+    fn from(e: std::io::Error) -> BinverseError {
+        BinverseError::IO(e)
     }
 }

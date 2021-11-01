@@ -1,6 +1,6 @@
 use std::io::{Read, Write};
 
-use crate::{error::{RenameSymbol, BinverseResult}, serialize::{Deserialize, Serialize, SizeBytes, SizedDeserialize, SizedSerialize}, streams::{Deserializer, Serializer}};
+use crate::{error::{BinverseError, BinverseResult}, serialize::{Deserialize, Serialize, SizeBytes, SizedDeserialize, SizedSerialize}, streams::{Deserializer, Serializer}};
 
 impl<W: Write> Serialize<W> for bool {
     fn serialize(&self, s: &mut Serializer<W>) -> BinverseResult<()> {
@@ -14,7 +14,7 @@ impl<R: Read> Deserialize<R> for bool {
         match buf[0] {
             0 => Ok(false),
             1 => Ok(true),
-            _ => Err(RenameSymbol::InvalidData)
+            _ => Err(BinverseError::InvalidData)
         }
     }
 }
@@ -178,7 +178,7 @@ impl<R: Read> SizedDeserialize<R> for String {
     fn deserialize_sized(d: &mut Deserializer<R>, size: usize) -> BinverseResult<Self> {
         let mut b = vec![0; size];
         d.read(&mut b)?;
-        String::from_utf8(b).or(Err(RenameSymbol::InvalidUTF8))
+        String::from_utf8(b).or(Err(BinverseError::InvalidUTF8))
     }
 }
 
