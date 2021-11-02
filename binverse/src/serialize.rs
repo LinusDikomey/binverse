@@ -18,6 +18,7 @@ pub enum SizeBytes {
     Var
 }
 impl SizeBytes {
+    #[cfg_attr(feature = "inline", inline)]
     pub fn to_str(&self) -> &'static str {
         use SizeBytes::*;
         match self {

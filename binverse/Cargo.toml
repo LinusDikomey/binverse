@@ -1,6 +1,6 @@
 [package]
 name = "binverse"
-version = "0.5.1"
+version = "0.5.2"
 authors = ["Linus Dikomey"]
 license = "MIT"
 readme = "README.md"
@@ -13,8 +13,7 @@ categories = ["encoding"]
 edition = "2021"
 
 [features]
-derive = ["binverse_derive"]
-default_features = ["binverse_derive"]
+inline = []
 
 [dependencies]
-binverse_derive = { version = "=0.5.1", path = "../binverse_derive", optional = true }
+binverse_derive = { version = "=0.5.2", path = "../binverse_derive" }

@@ -3,11 +3,13 @@ use std::io::{Read, Write};
 use crate::{error::{BinverseError, BinverseResult}, serialize::{Deserialize, Serialize, SizeBytes, SizedDeserialize, SizedSerialize}, streams::{Deserializer, Serializer}};
 
 impl<W: Write> Serialize<W> for bool {
+    #[cfg_attr(feature = "inline", inline)]
     fn serialize(&self, s: &mut Serializer<W>) -> BinverseResult<()> {
         s.write(&[*self as u8])
     }
 }
 impl<R: Read> Deserialize<R> for bool {
+    #[cfg_attr(feature = "inline", inline)]
     fn deserialize(d: &mut Deserializer<R>) -> BinverseResult<Self> {
         let mut buf = [0];
         d.read(&mut buf)?;
@@ -24,11 +26,13 @@ macro_rules! number_impls {
     ($($t: ty, $bytes: expr),*) => {
         $(
             impl<W: Write> Serialize<W> for $t {
+                #[cfg_attr(feature = "inline", inline)]
                 fn serialize(&self, s: &mut Serializer<W>) -> BinverseResult<()> {
                     s.write(&self.to_le_bytes())
                 }
             }
             impl<R: Read> Deserialize<R> for $t {
+                #[cfg_attr(feature = "inline", inline)]
                 fn deserialize(d: &mut Deserializer<R>) -> BinverseResult<Self> {
                     let mut b = [0; $bytes];
                     d.read(&mut b)?;
@@ -50,6 +54,7 @@ number_impls!(
 
 impl<W: Write, T, const N: usize> Serialize<W> for [T; N]
 where T: Serialize<W> {
+    #[cfg_attr(feature = "inline", inline)]
     fn serialize(&self, s: &mut Serializer<W>) -> BinverseResult<()> {
         for elem in self {
             elem.serialize(s)?;
@@ -64,6 +69,7 @@ macro_rules! array_deserialize {
     ($($n: expr, $($i: ident)*);*) => {
         $(
             impl<R: Read, T: Deserialize<R>> Deserialize<R> for [T; $n] {
+                #[cfg_attr(feature = "inline", inline)]
                 fn deserialize(d: &mut Deserializer<R>) -> BinverseResult<Self> {
                     $(
                         let $i: T = d.deserialize()?;
@@ -115,25 +121,13 @@ array_deserialize! {
     32, e0 e1 e2 e3 e4 e5 e6 e7 e8 e9 e10 e11 e12 e13 e14 e15 e16 e17 e18 e19 e20 e21 e22 e23 e24 e25 e26 e27 e28 e29 e30 e31
 }
 
-// implement Serialize/Deserialize with a default size of 'SizeBytes::Var' for 
-// anything implementing SizedSerialize/SizedSerialize:
-
-/*impl<W: Write, T: SizedDeserialize<W>> Serialize<W> for T {
-    fn serialize(&self, s: &mut Serializer<W>) -> BinverseResult<()> {
-        s.serialize_sized(SizeBytes::Var, self)
-    }
-}
-impl<R: Read, T: SizedDeserialize<R>> Deserialize<R> for T {
-    fn deserialize(d: &mut Deserializer<R>) -> BinverseResult<Self> {
-        d.deserialize_sized(SizeBytes::Var)   
-    }
-}*/
-
 // str/String
 impl<W: Write> SizedSerialize<W> for &str {
+    #[cfg_attr(feature = "inline", inline)]
     fn serialize_sized(&self, s: &mut Serializer<W>, size: usize) -> BinverseResult<()> {
         s.write(self[..size].as_bytes())
     }
+    #[cfg_attr(feature = "inline", inline)]
     fn size(&self) -> usize {
         self.len()
     }
@@ -144,6 +138,7 @@ macro_rules! ser_sized {
         $(
             impl<W: Write, $($generic),*> Serialize<W> for $t 
             where $($($tree)*)* {
+                #[cfg_attr(feature = "inline", inline)]
                 fn serialize(&self, s: &mut Serializer<W>) -> BinverseResult<()> {
                     s.serialize_sized(SizeBytes::Var, self)
                 }
@@ -156,6 +151,7 @@ macro_rules! deser_sized {
         $(
             impl<R: Read, $($generic),*> Deserialize<R> for $t 
             where $($($tree)*)* {
+                #[cfg_attr(feature = "inline", inline)]
                 fn deserialize(d: &mut Deserializer<R>) -> BinverseResult<Self> {
                     d.deserialize_sized(SizeBytes::Var)
                 }
@@ -168,13 +164,16 @@ ser_sized!{ {&str [][]} {String [][]} {&[T] [T] [[T: Serialize<W>]]} {Vec<T> [T]
 deser_sized!{ {String [][]} {Vec<T> [T] [[T: Deserialize<R>]]} }
 
 impl<W: Write> SizedSerialize<W> for String {
+    #[cfg_attr(feature = "inline", inline)]
     fn serialize_sized(&self, s: &mut Serializer<W>, size: usize) -> BinverseResult<()> {
         // TODO: slicing here could make code more inefficient when the size is usually correct
         s.write(self[..size].as_bytes())
     }
+    #[cfg_attr(feature = "inline", inline)]
     fn size(&self) -> usize { self.len() }
 }
 impl<R: Read> SizedDeserialize<R> for String {
+    #[cfg_attr(feature = "inline", inline)]
     fn deserialize_sized(d: &mut Deserializer<R>, size: usize) -> BinverseResult<Self> {
         let mut b = vec![0; size];
         d.read(&mut b)?;
@@ -184,25 +183,30 @@ impl<R: Read> SizedDeserialize<R> for String {
 
 impl<W: Write, T> SizedSerialize<W> for &[T]
 where T: Serialize<W> {
+    #[cfg_attr(feature = "inline", inline)]
     fn serialize_sized(&self, s: &mut Serializer<W>, size: usize) -> BinverseResult<()> {
         for elem in &self[0..size] {
             elem.serialize(s)?;
         }
         Ok(())
     }
+    #[cfg_attr(feature = "inline", inline)]
     fn size(&self) -> usize {
         self.len()
     }
 }
 impl<W: Write, T: Serialize<W>> SizedSerialize<W> for Vec<T> {
+    #[cfg_attr(feature = "inline", inline)]
     fn serialize_sized(&self, s: &mut Serializer<W>, size: usize) -> BinverseResult<()> {
         self.as_slice().serialize_sized(s, size)
     }
+    #[cfg_attr(feature = "inline", inline)]
     fn size(&self) -> usize {
         self.len()
     }
 }
 impl<R: Read, T: Deserialize<R>> SizedDeserialize<R> for Vec<T> {
+    #[cfg_attr(feature = "inline", inline)]
     fn deserialize_sized(d: &mut Deserializer<R>, size: usize) -> BinverseResult<Self> {
         (0..size).map(|_| d.deserialize()).collect::<BinverseResult<Vec<_>>>()
     }

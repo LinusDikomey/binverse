@@ -16,6 +16,7 @@ pub enum BinverseError {
 pub type BinverseResult<T> = Result<T, BinverseError>;
 
 impl From<std::io::Error> for BinverseError {
+    #[cfg_attr(feature = "inline", inline)]
     fn from(e: std::io::Error) -> BinverseError {
         BinverseError::IO(e)
     }
