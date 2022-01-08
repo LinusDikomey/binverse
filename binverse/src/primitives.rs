@@ -1,4 +1,4 @@
-use std::io::{Read, Write};
+use std::{io::{Read, Write}, collections::HashMap, hash::Hash};
 
 use crate::{error::{BinverseError, BinverseResult}, serialize::{Deserialize, Serialize, SizeBytes, SizedDeserialize, SizedSerialize}, streams::{Deserializer, Serializer}};
 
@@ -219,8 +219,8 @@ macro_rules! deser_sized {
     }
 }
 
-ser_sized!{ {&str [][]} {String [][]} {&[T] [T] [[T: Serialize<W>]]} {Vec<T> [T] [[T: Serialize<W>]]} }
-deser_sized!{ {String [][]} {Vec<T> [T] [[T: Deserialize<R>]]} }
+ser_sized!{ {&str [][]} {String [][]} {&[T] [T] [[T: Serialize<W>]]} {Vec<T> [T] [[T: Serialize<W>]]} {HashMap<K, V> [K, V] [[K: Serialize<W>, V: Serialize<W>]]} }
+deser_sized!{ {String [][]} {Vec<T> [T] [[T: Deserialize<R>]]} {HashMap<K, V> [K, V] [[K: Deserialize<R> + Eq + Hash, V: Deserialize<R>]]} }
 
 impl<W: Write> SizedSerialize<W> for String {
     #[cfg_attr(feature = "inline", inline)]
@@ -268,5 +268,26 @@ impl<R: Read, T: Deserialize<R>> SizedDeserialize<R> for Vec<T> {
     #[cfg_attr(feature = "inline", inline)]
     fn deserialize_sized(d: &mut Deserializer<R>, size: usize) -> BinverseResult<Self> {
         (0..size).map(|_| d.deserialize()).collect::<BinverseResult<Vec<_>>>()
+    }
+}
+
+impl<W: Write, K: Serialize<W>, V: Serialize<W>> SizedSerialize<W> for HashMap<K, V> {
+    #[cfg_attr(feature = "inline", inline)]
+    fn serialize_sized(&self, s: &mut Serializer<W>, size: usize) -> BinverseResult<()> {
+        for (k, v) in self.iter().take(size) {
+            k.serialize(s)?;
+            v.serialize(s)?;
+        }
+        Ok(())
+    }
+    #[cfg_attr(feature = "inline", inline)]
+    fn size(&self) -> usize {
+        self.len()
+    }
+}
+impl<R: Read, K: Deserialize<R> + Eq + Hash, V: Deserialize<R>> SizedDeserialize<R> for HashMap<K, V> {
+    #[cfg_attr(feature = "inline", inline)]
+    fn deserialize_sized(d: &mut Deserializer<R>, size: usize) -> BinverseResult<Self> {
+        Ok((0..size).map(|_| Ok((d.deserialize()?, d.deserialize()?))).collect::<BinverseResult<HashMap<K, V>>>()?)
     }
 }

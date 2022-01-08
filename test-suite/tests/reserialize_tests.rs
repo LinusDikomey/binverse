@@ -1,4 +1,4 @@
-use std::{fmt::Debug, io::Cursor};
+use std::{fmt::Debug, io::Cursor, collections::HashMap};
 
 use binverse::{serialize::{Deserialize, Serialize, SizeBytes, SizedSerialize, SizedDeserialize}, streams::{Deserializer, Serializer}};
 use binverse_derive::serializable;
@@ -90,6 +90,11 @@ fn primitive_serialization() {
         BinverseError::SizeExceeded { limit: SizeBytes::One, found: 256 } => (),
         err => panic!("Invalid error: {:?}", err)
     }
+
+    let mut map = HashMap::new();
+    map.insert("Hello".to_owned(), [1, 2, 3]);
+    map.insert("This is a map".to_owned(), [4, 5, -3]);
+    reserialize_sized_test(map, SizeBytes::One);
 }
 
 
