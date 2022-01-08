@@ -94,6 +94,11 @@ macro_rules! tuples {
                     Ok(())
                 }
             }
+            impl<R: Read, $($t: Deserialize<R>),*> Deserialize<R> for ($($t),*) {
+                fn deserialize(d: &mut Deserializer<R>) -> BinverseResult<Self> {
+                    Ok(($( <$t as $crate::serialize::Deserialize<R>>::deserialize(d)?, )*))
+                }
+            }
         )*
     }
 }
