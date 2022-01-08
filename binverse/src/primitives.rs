@@ -63,6 +63,60 @@ where T: Serialize<W> {
     }
 }
 
+impl<W: Write, T: Serialize<W>> Serialize<W> for Option<T> {
+    fn serialize(&self, s: &mut Serializer<W>) -> BinverseResult<()> {
+        if let Some(e) = self {
+            1_u8.serialize(s)?;
+            e.serialize(s)?;
+        } else {
+            0_u8.serialize(s)?;
+        }
+        Ok(())
+    }
+}
+impl<R: Read, T: Deserialize<R>> Deserialize<R> for Option<T> {
+    fn deserialize(d: &mut Deserializer<R>) -> BinverseResult<Self> {
+        Ok(match d.deserialize()? {
+            0_u8 => None,
+            1_u8 => Some(d.deserialize()?),
+            _ => return Err(BinverseError::InvalidData)
+        })
+    }
+}
+
+// tuples
+macro_rules! tuples {
+    ($($($t: ident $elem: tt)*;)*) => {
+        $(
+            impl<W: Write, $($t: Serialize<W>),*> Serialize<W> for ($($t),*) {
+                fn serialize(&self, s: &mut Serializer<W>) -> BinverseResult<()> {
+                    $( self.$elem.serialize(s)?; )*
+                    Ok(())
+                }
+            }
+        )*
+    }
+}
+
+tuples! {
+    A 0 B 1;
+    A 0 B 1 C 2;
+    A 0 B 1 C 2 D 3;
+    A 0 B 1 C 2 D 3 E 4;
+    A 0 B 1 C 2 D 3 E 4 F 5;
+    A 0 B 1 C 2 D 3 E 4 F 5 G 6;
+    A 0 B 1 C 2 D 3 E 4 F 5 G 6 H 7;
+    A 0 B 1 C 2 D 3 E 4 F 5 G 6 H 7 I 8;
+    A 0 B 1 C 2 D 3 E 4 F 5 G 6 H 7 I 8 J 9;
+    A 0 B 1 C 2 D 3 E 4 F 5 G 6 H 7 I 8 J 9 K 10;
+    A 0 B 1 C 2 D 3 E 4 F 5 G 6 H 7 I 8 J 9 K 10 L 11;
+    A 0 B 1 C 2 D 3 E 4 F 5 G 6 H 7 I 8 J 9 K 10 L 11 M 11;
+    A 0 B 1 C 2 D 3 E 4 F 5 G 6 H 7 I 8 J 9 K 10 L 11 M 11 N 12;
+    A 0 B 1 C 2 D 3 E 4 F 5 G 6 H 7 I 8 J 9 K 10 L 11 M 11 N 12 O 13;
+    A 0 B 1 C 2 D 3 E 4 F 5 G 6 H 7 I 8 J 9 K 10 L 11 M 11 N 12 O 13 P 14;
+    A 0 B 1 C 2 D 3 E 4 F 5 G 6 H 7 I 8 J 9 K 10 L 11 M 11 N 12 O 13 P 14 Q 15;
+}
+
 // this is pretty stupid but rust has no good way to handle array initialization with varying sizes
 
 macro_rules! array_deserialize {
