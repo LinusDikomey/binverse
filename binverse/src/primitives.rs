@@ -1,4 +1,4 @@
-use std::{io::{Read, Write}, collections::HashMap, hash::Hash};
+use std::{io::{Read, Write}, collections::HashMap, hash::Hash, mem::ManuallyDrop};
 
 use crate::{error::{BinverseError, BinverseResult}, serialize::{Deserialize, Serialize, SizeBytes, SizedDeserialize, SizedSerialize}, streams::{Deserializer, Serializer}};
 
@@ -55,6 +55,56 @@ where T: Serialize<W> {
             elem.serialize(s)?;
         }
         Ok(())
+    }
+}
+
+/// To initialize an array element by element, we need an array containing
+/// uninitialized data. InitializingArray does this but only drops the elements
+/// that are initalized to prevent it from dropping invalid data if it is
+/// dropped before it is fully initialized.
+struct InitializingArray<T, const N: usize> {
+    inner: ManuallyDrop<[T; N]>,
+    initialized_to: usize
+}
+impl<T, const N: usize> InitializingArray<T, N> {
+    fn new() -> Self {
+        Self {
+            inner: ManuallyDrop::new(unsafe { std::mem::MaybeUninit::uninit().assume_init() }),
+            initialized_to: 0
+        }
+    }
+    fn push(&mut self, t: T) {
+        assert!(self.initialized_to < self.inner.len());
+        self.inner[self.initialized_to] = t;
+        self.initialized_to += 1;
+    }
+    fn get(self) -> [T; N] {
+        assert_eq!(self.inner.len(), self.initialized_to);
+        // SAFETY: we prevent the object from dropping by manually pulling out the fields.
+        // Because we get all the fields, this is safe.
+        // The array is also guaranteed to be fully initialized because of the assert above;
+        unsafe {
+            let x = ManuallyDrop::new(self);
+            let inner = std::ptr::read(&(*x).inner);
+            let _initialized_to = std::ptr::read(&(*x).initialized_to);
+            ManuallyDrop::into_inner(inner)
+        }
+    }
+}
+impl<T, const N: usize> Drop for InitializingArray<T, N> {
+    fn drop(&mut self) {
+        // only the initialized data is dropped
+        unsafe { std::ptr::drop_in_place(&mut self.inner[..self.initialized_to]) };
+    }
+}
+
+impl<R: Read, T: Deserialize<R>, const N: usize> Deserialize<R> for [T; N] {
+    fn deserialize(d: &mut Deserializer<R>) -> BinverseResult<Self> {
+        let mut init_arr = InitializingArray::new();
+        for _ in 0..N {
+            init_arr.push(d.deserialize()?);
+        }
+        Ok(init_arr.get())
     }
 }
 
@@ -115,63 +165,6 @@ tuples! {
     A 0 B 1 C 2 D 3 E 4 F 5 G 6 H 7 I 8 J 9 K 10 L 11 M 11 N 12 O 13;
     A 0 B 1 C 2 D 3 E 4 F 5 G 6 H 7 I 8 J 9 K 10 L 11 M 11 N 12 O 13 P 14;
     A 0 B 1 C 2 D 3 E 4 F 5 G 6 H 7 I 8 J 9 K 10 L 11 M 11 N 12 O 13 P 14 Q 15;
-}
-
-// this is pretty stupid but rust has no good way to handle array initialization with varying sizes
-
-macro_rules! array_deserialize {
-    ($($n: expr, $($i: ident)*);*) => {
-        $(
-            impl<R: Read, T: Deserialize<R>> Deserialize<R> for [T; $n] {
-                fn deserialize(d: &mut Deserializer<R>) -> BinverseResult<Self> {
-                    $(
-                        let $i: T = d.deserialize()?;
-                    )*
-                    Ok([
-                        $(
-                            $i
-                        ),*
-                    ])
-
-                }
-            }
-        )*
-    };
-}
-
-array_deserialize! {
-    1,  e0;
-    2,  e0 e1;
-    3,  e0 e1 e2;
-    4,  e0 e1 e2 e3;
-    5,  e0 e1 e2 e3 e4;
-    6,  e0 e1 e2 e3 e4 e5;
-    7,  e0 e1 e2 e3 e4 e5 e6;
-    8,  e0 e1 e2 e3 e4 e5 e6 e7;
-    9,  e0 e1 e2 e3 e4 e5 e6 e7 e8;
-    10, e0 e1 e2 e3 e4 e5 e6 e7 e8 e9;
-    11, e0 e1 e2 e3 e4 e5 e6 e7 e8 e9 e10;
-    12, e0 e1 e2 e3 e4 e5 e6 e7 e8 e9 e10 e11;
-    13, e0 e1 e2 e3 e4 e5 e6 e7 e8 e9 e10 e11 e12;
-    14, e0 e1 e2 e3 e4 e5 e6 e7 e8 e9 e10 e11 e12 e13;
-    15, e0 e1 e2 e3 e4 e5 e6 e7 e8 e9 e10 e11 e12 e13 e14;
-    16, e0 e1 e2 e3 e4 e5 e6 e7 e8 e9 e10 e11 e12 e13 e14 e15;
-    17, e0 e1 e2 e3 e4 e5 e6 e7 e8 e9 e10 e11 e12 e13 e14 e15 e16;
-    18, e0 e1 e2 e3 e4 e5 e6 e7 e8 e9 e10 e11 e12 e13 e14 e15 e16 e17;
-    19, e0 e1 e2 e3 e4 e5 e6 e7 e8 e9 e10 e11 e12 e13 e14 e15 e16 e17 e18;
-    20, e0 e1 e2 e3 e4 e5 e6 e7 e8 e9 e10 e11 e12 e13 e14 e15 e16 e17 e18 e19;
-    21, e0 e1 e2 e3 e4 e5 e6 e7 e8 e9 e10 e11 e12 e13 e14 e15 e16 e17 e18 e19 e20;
-    22, e0 e1 e2 e3 e4 e5 e6 e7 e8 e9 e10 e11 e12 e13 e14 e15 e16 e17 e18 e19 e20 e21;
-    23, e0 e1 e2 e3 e4 e5 e6 e7 e8 e9 e10 e11 e12 e13 e14 e15 e16 e17 e18 e19 e20 e21 e22;
-    24, e0 e1 e2 e3 e4 e5 e6 e7 e8 e9 e10 e11 e12 e13 e14 e15 e16 e17 e18 e19 e20 e21 e22 e23;
-    25, e0 e1 e2 e3 e4 e5 e6 e7 e8 e9 e10 e11 e12 e13 e14 e15 e16 e17 e18 e19 e20 e21 e22 e23 e24;
-    26, e0 e1 e2 e3 e4 e5 e6 e7 e8 e9 e10 e11 e12 e13 e14 e15 e16 e17 e18 e19 e20 e21 e22 e23 e24 e25;
-    27, e0 e1 e2 e3 e4 e5 e6 e7 e8 e9 e10 e11 e12 e13 e14 e15 e16 e17 e18 e19 e20 e21 e22 e23 e24 e25 e26;
-    28, e0 e1 e2 e3 e4 e5 e6 e7 e8 e9 e10 e11 e12 e13 e14 e15 e16 e17 e18 e19 e20 e21 e22 e23 e24 e25 e26 e27;
-    29, e0 e1 e2 e3 e4 e5 e6 e7 e8 e9 e10 e11 e12 e13 e14 e15 e16 e17 e18 e19 e20 e21 e22 e23 e24 e25 e26 e27 e28;
-    30, e0 e1 e2 e3 e4 e5 e6 e7 e8 e9 e10 e11 e12 e13 e14 e15 e16 e17 e18 e19 e20 e21 e22 e23 e24 e25 e26 e27 e28 e29;
-    31, e0 e1 e2 e3 e4 e5 e6 e7 e8 e9 e10 e11 e12 e13 e14 e15 e16 e17 e18 e19 e20 e21 e22 e23 e24 e25 e26 e27 e28 e29 e30;
-    32, e0 e1 e2 e3 e4 e5 e6 e7 e8 e9 e10 e11 e12 e13 e14 e15 e16 e17 e18 e19 e20 e21 e22 e23 e24 e25 e26 e27 e28 e29 e30 e31
 }
 
 // str/String
