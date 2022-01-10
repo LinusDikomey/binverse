@@ -1,6 +1,6 @@
 use std::{fmt::Debug, io::Cursor, collections::HashMap};
 
-use binverse::{serialize::{Deserialize, Serialize, SizeBytes, SizedSerialize, SizedDeserialize}, streams::{Deserializer, Serializer}};
+use binverse::{serialize::{Deserialize, Serialize, SizeBytes, SizedSerialize, SizedDeserialize}, streams::{Deserializer, Serializer}, error::BinverseError};
 use binverse_derive::serializable;
 
 fn reserialize_test<T : Serialize<Vec<u8>> + Deserialize<Cursor<Vec<u8>>> + PartialEq + Debug>(val: T) {
@@ -76,6 +76,24 @@ fn primitive_serialization() {
         u128::MAX - 1,
     ]);
     
+
+    test_all(&[
+        Some(Some(-3.0)),
+        Some(Some(5.0)),
+        Some(Some(f64::INFINITY)),
+        Some(None),
+        None,
+    ]);
+
+    test_all(&[
+        Some("Option string".to_owned()),
+        Some(String::new()),
+        None
+    ]);
+
+    reserialize_test([1, 2, 3]);
+    reserialize_test::<[i32; 0]>([]);
+    reserialize_test(["".to_owned(), "ABCD".to_owned()]);
     
     let string = "A random example string";
     reserialize_sized_test(string.to_owned(), SizeBytes::One);
@@ -95,6 +113,35 @@ fn primitive_serialization() {
     map.insert("Hello".to_owned(), [1, 2, 3]);
     map.insert("This is a map".to_owned(), [4, 5, -3]);
     reserialize_sized_test(map, SizeBytes::One);
+}
+
+#[test]
+fn array_drop() {
+    let mut d = Deserializer::new_no_revision([1_u8, 0, 0, 1, 1].as_slice(), 0);
+    assert_eq!(d.deserialize::<[Option<bool>; 3]>().unwrap(), [Some(false), None, Some(true)]);
+    static mut DROPS: u32 = 0;
+
+    // struct to count number of drops
+    #[serializable]
+    struct DropTest(bool);
+    impl Drop for DropTest {
+        fn drop(&mut self) {
+            println!("drop");
+            // should work for this test because it only runs on one thread
+            unsafe { DROPS += 1; }
+        }
+    }
+    let mut d = Deserializer::new_no_revision([0_u8, 1_u8, 1_u8, 0_u8, 1_u8, 2_u8].as_slice(), 0);
+    assert_eq!(unsafe { DROPS }, 0);
+    let first_2 = d.deserialize::<[DropTest; 2]>().unwrap();
+    assert_eq!(unsafe { DROPS }, 0);
+    matches!(&first_2, &[DropTest(false), DropTest(true)]);
+    drop(first_2);
+    assert_eq!(unsafe { DROPS }, 2);
+
+    matches!(d.deserialize::<[DropTest; 4]>(), Err(BinverseError::InvalidData));
+    // fails after reading 3 elements, drops them
+    assert_eq!(unsafe { DROPS }, 5);
 }
 
 

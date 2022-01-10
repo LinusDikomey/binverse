@@ -1,4 +1,4 @@
-use std::{io::{Read, Write}, collections::HashMap, hash::Hash, mem::ManuallyDrop};
+use std::{io::{Read, Write}, collections::HashMap, hash::Hash, mem::{ManuallyDrop, MaybeUninit}};
 
 use crate::{error::{BinverseError, BinverseResult}, serialize::{Deserialize, Serialize, SizeBytes, SizedDeserialize, SizedSerialize}, streams::{Deserializer, Serializer}};
 
@@ -69,13 +69,13 @@ struct InitializingArray<T, const N: usize> {
 impl<T, const N: usize> InitializingArray<T, N> {
     fn new() -> Self {
         Self {
-            inner: ManuallyDrop::new(unsafe { std::mem::MaybeUninit::uninit().assume_init() }),
+            inner: unsafe { MaybeUninit::uninit().assume_init() },
             initialized_to: 0
         }
     }
     fn push(&mut self, t: T) {
-        assert!(self.initialized_to < self.inner.len());
-        self.inner[self.initialized_to] = t;
+        assert!(self.initialized_to < N);
+        unsafe { std::ptr::write(&mut self.inner[self.initialized_to], t) };
         self.initialized_to += 1;
     }
     fn get(self) -> [T; N] {
@@ -83,18 +83,19 @@ impl<T, const N: usize> InitializingArray<T, N> {
         // SAFETY: we prevent the object from dropping by manually pulling out the fields.
         // Because we get all the fields, this is safe.
         // The array is also guaranteed to be fully initialized because of the assert above;
-        unsafe {
-            let x = ManuallyDrop::new(self);
-            let inner = std::ptr::read(&(*x).inner);
-            let _initialized_to = std::ptr::read(&(*x).initialized_to);
+        let v = unsafe {
+            let inner = std::ptr::read(&self.inner);
+            let _initialized_to = std::ptr::read(&self.initialized_to);
+            std::mem::forget(self);
             ManuallyDrop::into_inner(inner)
-        }
+        };
+        v
     }
 }
 impl<T, const N: usize> Drop for InitializingArray<T, N> {
     fn drop(&mut self) {
         // only the initialized data is dropped
-        unsafe { std::ptr::drop_in_place(&mut self.inner[..self.initialized_to]) };
+        unsafe { std::ptr::drop_in_place(std::slice::from_raw_parts_mut(self.inner.as_mut_ptr(), self.initialized_to));};
     }
 }
 
@@ -102,7 +103,8 @@ impl<R: Read, T: Deserialize<R>, const N: usize> Deserialize<R> for [T; N] {
     fn deserialize(d: &mut Deserializer<R>) -> BinverseResult<Self> {
         let mut init_arr = InitializingArray::new();
         for _ in 0..N {
-            init_arr.push(d.deserialize()?);
+            let x = d.deserialize()?;
+            init_arr.push(x);
         }
         Ok(init_arr.get())
     }
