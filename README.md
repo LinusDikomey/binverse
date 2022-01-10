@@ -12,7 +12,6 @@ Right now, the crate is still **work in progress** and I wouldn't recommend usin
 - [x] Error handling
 - [x] Procedural macros to avoid boilerplate code
 - [x] Versioning/size attributes using macros
-- [ ] Documentation
 
 ## Basic example
 

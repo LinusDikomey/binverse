@@ -1,4 +1,9 @@
+//! binverse_derive provides macros for the `binverse` crate. 
+//! `#\[serializable\]` automatically implements Serialize and Deserialize
+//! and can parse some attributes related to versioning and data structure sizes.
+
 #![feature(proc_macro_diagnostic)]
+#![warn(missing_docs)]
 
 use proc_macro::TokenStream;
 use quote::quote;
@@ -38,6 +43,29 @@ impl SizeBytes {
 }
 
 #[proc_macro_attribute]
+/// Implements `Serialize` and `Deserialize` for a struct.
+/// All members also have to implement Serialize and Deserialize.
+/// Members can be annotated with the following attributes:
+/// - SizeBytes<N, T> to set the size bytes of a data structure. N can be 1, 2, 4 or 8.
+/// - Added<N, T> states that the member was added in revision N.
+/// - Removed<N, T> states that the member was removed in revision N. 
+/// This also removes the member from the struct, it will only be used in the
+///  Deserialize implementation to skip it in old data.
+/// 
+/// The attributes can be chained in any meaningful order. 
+/// SizeBytes always has to be the innermost attribute if present.
+/// 
+/// # Example
+/// ```ignore
+/// #[binverse_derive::serializable]
+/// struct Example {
+///     a: i32,                                 // Always present 
+///     b: Added<2, f32>,                       // Added in revision 2.
+///     c: Removed<4, Added<2, u16>>,           // Also added in revision 2 and removed in revision 4 again. The macro will remove this field.
+///     d: Added<6, SizeBytes<2, Vec<i32>>>,    // Added in revision 6. The Vec can't serialize with more than 65536 elements.
+///     e: SizeBytes<1, String> ,               // A string with a maximum length of 255 bytes when serialized.
+/// }
+/// ```
 pub fn serializable(attr: TokenStream, input: TokenStream) -> TokenStream {
     if !attr.is_empty() {
         panic!("No attributes expected")

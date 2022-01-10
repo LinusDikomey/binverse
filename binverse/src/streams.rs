@@ -2,30 +2,34 @@ use std::io::{Read, Write};
 
 use crate::{error::{BinverseError, BinverseResult}, serialize::{Deserialize, Serialize, SizeBytes, SizedDeserialize, SizedSerialize}, varint};
 
+/// A serializer used to write serialized data to the writer.
 pub struct Serializer<W: Write> {
     pub(crate) w: W,
 }
 impl<W: Write> Serializer<W> {
-    #[cfg_attr(feature = "inline", inline)]
+    /// Creates a new serializer. The revision will be written to the data to
+    /// make it possible to parse the data in future revisions. If the revision
+    ///  should not be written, use [`Serializer::new_no_revision`].
     pub fn new(w: W, revision: u32) -> BinverseResult<Self> {
         let mut s = Self { w };
         revision.serialize(&mut s)?;
         Ok(s)
     }
 
-    /// Create a new Serializer, but without writing the revision into the stream
-    #[cfg_attr(feature = "inline", inline)]
+    /// Create a new Serializer, but without writing the revision into the stream.
     pub fn new_no_revision(w: W) -> Self {
         Self { w }
     }
 
-    #[cfg_attr(feature = "inline", inline)]
+    /// Write a raw byte buffer into the output. Should only be used when the
+    /// size will be known when deserializing, use the [SizedSerialize]/[SizedDeserialize]
+    /// implementations for `[u8]` or `Vec<u8>` otherwise.
     pub fn write(&mut self, buf: &[u8]) -> BinverseResult<()> {
         self.w.write_all(buf)?;
         Ok(())
     }
-    #[cfg_attr(feature = "inline", inline)]
-    pub fn write_size(&mut self, sb: SizeBytes, size: usize) -> BinverseResult<()> {
+
+    pub(crate) fn write_size(&mut self, sb: SizeBytes, size: usize) -> BinverseResult<()> {
         use SizeBytes::*;
         let max_size = match sb {
             One         =>  u8::MAX as usize,
@@ -44,23 +48,32 @@ impl<W: Write> Serializer<W> {
             SizeBytes::Var   => varint::write(size as u64, &mut self.w)
         }
     }
-    #[cfg_attr(feature = "inline", inline)]
-    pub fn serialize_sized<T: SizedSerialize<W>>(&mut self, sb: SizeBytes, t: &T) -> BinverseResult<()> {
+
+    /// Serialize a sized data structure. Use the `size_bytes` parameter to
+    /// control how many bytes are used to serialize the size of the data structure.
+    /// Note that any elements exceeding the size will not be serialized.
+    /// For example, a [Vec] with 258 elements will lose it's last 3 elements
+    /// when using [SizeBytes::One].
+    pub fn serialize_sized<T: SizedSerialize<W>>(&mut self, size_bytes: SizeBytes, t: &T) -> BinverseResult<()> {
         let size = t.size();
-        self.write_size(sb, size)?;
+        self.write_size(size_bytes, size)?;
         t.serialize_sized(self, size)
     }
-    #[cfg_attr(feature = "inline", inline)]
+    /// Returns the inner writer.
     pub fn finish(self) -> W { self.w }
 }
 
+/// Reads previously serialized data from a reader. Note that all calls must be
+/// the opposite from the calls used when serializing so the data matches.
 pub struct Deserializer<R: Read> {
     pub(crate) r: R,
     revision: u32
 }
 
 impl<R: Read> Deserializer<R> {
-    #[cfg_attr(feature = "inline", inline)]
+    /// Creates a new deserializer from an underlying reader. The revision
+    /// is read from the reader. If the revision should not be read, use
+    /// [`Deserializer::new_no_revision`].
     pub fn new(r: R) -> BinverseResult<Self> {
         let mut d = Self {
             r,
@@ -72,19 +85,20 @@ impl<R: Read> Deserializer<R> {
 
     /// Create a new Deserializer, but without reading the revision from the stream.
     /// Instead, the revision has to be passed. Providing data created in a different
-    /// revision than specified can lead to invalid data or errors
-    #[cfg_attr(feature = "inline", inline)]
+    /// revision than specified can lead to invalid data or errors.
     pub fn new_no_revision(r: R, revision: u32) -> Self {
         Self { r, revision }
     }
     
-    #[cfg_attr(feature = "inline", inline)]
+    /// Reads raw bytes into a byte slice. Should only be used when
+    /// implementing new [Deserialize] implementations that can't make use of
+    /// existing implementations.
     pub fn read(&mut self, buf: &mut [u8]) -> BinverseResult<()> {
         self.r.read_exact(buf)?;
         Ok(())
     }
-    #[cfg_attr(feature = "inline", inline)]
-    pub fn read_size(&mut self, sb: SizeBytes) -> BinverseResult<usize>  {
+
+    pub(crate) fn read_size(&mut self, sb: SizeBytes) -> BinverseResult<usize>  {
         Ok(match sb {
             SizeBytes::One   => self.deserialize::< u8>()? as usize,
             SizeBytes::Two   => self.deserialize::<u16>()? as usize,
@@ -93,15 +107,20 @@ impl<R: Read> Deserializer<R> {
             SizeBytes::Var   => varint::read(&mut self.r)? as usize
         })
     }
-    #[cfg_attr(feature = "inline", inline)]
+
+    /// Deserializes something. The type has to be known and has to match the
+    /// type that was serialized previously.
     pub fn deserialize<T: Deserialize<R>>(&mut self) -> BinverseResult<T> { T::deserialize(self) }
-    #[cfg_attr(feature = "inline", inline)]
-    pub fn deserialize_sized<T: SizedDeserialize<R>>(&mut self, sb: SizeBytes) -> BinverseResult<T> {
-        let size = self.read_size(sb)?;
+
+    /// Deserializes a data structure with a size. Type and size_bytes have to
+    /// match the serialized data structure.
+    pub fn deserialize_sized<T: SizedDeserialize<R>>(&mut self, size_bytes: SizeBytes) -> BinverseResult<T> {
+        let size = self.read_size(size_bytes)?;
         T::deserialize_sized(self, size)
     }
-    #[cfg_attr(feature = "inline", inline)]
+    /// Get the revision of the data currently being deserialized. Used when
+    /// reading version-dependent data. 
     pub fn revision(&self) -> u32 { self.revision }
-    #[cfg_attr(feature = "inline", inline)]
+    /// Returns the inner reader.
     pub fn finish(self) -> R { self.r }
 }

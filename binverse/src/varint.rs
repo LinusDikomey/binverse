@@ -5,7 +5,6 @@ use crate::error::{BinverseResult, BinverseError};
 pub const MAX_LEN: usize = 10;
 
 /// Reads an unsigned 64-bit varint number from a Reader
-#[cfg_attr(feature = "inline", inline)]
 pub fn read<R: Read>(r: &mut R) -> BinverseResult<u64> {
     let mut x: u64 = 0;
     let mut s = 0;
@@ -27,7 +26,6 @@ pub fn read<R: Read>(r: &mut R) -> BinverseResult<u64> {
 }
 
 /// Writes an unsigned 64-bit varint number to a Writer
-#[cfg_attr(feature = "inline", inline)]
 pub fn write<W: Write>(mut x: u64, w: &mut W) -> Result<(), BinverseError> {
     while x >= 0x80 {
         w.write_all(&[x as u8 | 0x80])?;

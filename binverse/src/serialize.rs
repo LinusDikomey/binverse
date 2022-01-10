@@ -2,7 +2,7 @@ use std::io::{Read, Write};
 use crate::{error::BinverseResult, streams::{Deserializer, Serializer}};
 
 /// The Serialize trait provides a function to serialize into a data stream.
-/// It can be implemented manually or by using the #[serializable] attribute.
+/// It can be implemented manually or by using the #\[binverse_derive::serializable\] attribute.
 pub trait Serialize<W: Write> {
     /// The serialize function.
     /// Arguments:
@@ -11,7 +11,7 @@ pub trait Serialize<W: Write> {
 }
 
 /// The deserialize trait provides a function to deserialize from a data 
-/// stream. Ot can be implemented manually or by using the #[serializable]
+/// stream. It can be implemented manually or by using the #\[binverse_derive::serializable\]
 /// attribute.
 pub trait Deserialize<R: Read> : Sized {
     /// The deserialize function.
@@ -35,11 +35,11 @@ pub enum SizeBytes {
     /// The length is serialized using a variable amount of bytes depending on
     /// the size of the length. Larger numbers will take more bytes. This is
     /// often the default when no size bytes are specified. Note that 
-    /// serializing as a VarInt might decrease performance.
+    /// serializing as a VarInt might decrease performance, so providing a size
+    /// whenever the maximum size is known is recommended.
     Var
 }
 impl SizeBytes {
-    #[cfg_attr(feature = "inline", inline)]
     /// Converts the enum variants to it's name as a [str]. This is used for
     /// debugging and macro implementations.
     pub fn to_str(&self) -> &'static str {
