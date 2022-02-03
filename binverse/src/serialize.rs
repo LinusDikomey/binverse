@@ -10,7 +10,7 @@ pub trait Serialize<W: Write> {
     fn serialize(&self, s: &mut Serializer<W>) -> BinverseResult<()>;
 }
 
-/// The deserialize trait provides a function to deserialize from a data 
+/// The deserialize trait provides a function to deserialize from a data
 /// stream. It can be implemented manually or by using the #\[binverse_derive::serializable\]
 /// attribute.
 pub trait Deserialize<R: Read> : Sized {
@@ -34,7 +34,7 @@ pub enum SizeBytes {
     Eight,
     /// The length is serialized using a variable amount of bytes depending on
     /// the size of the length. Larger numbers will take more bytes. This is
-    /// often the default when no size bytes are specified. Note that 
+    /// often the default when no size bytes are specified. Note that
     /// serializing as a VarInt might decrease performance, so providing a size
     /// whenever the maximum size is known is recommended.
     Var
@@ -42,7 +42,7 @@ pub enum SizeBytes {
 impl SizeBytes {
     /// Converts the enum variants to it's name as a [str]. This is used for
     /// debugging and macro implementations.
-    pub fn to_str(&self) -> &'static str {
+    pub const fn to_str(&self) -> &'static str {
         use SizeBytes::*;
         match self {
             One => "One",
@@ -52,9 +52,20 @@ impl SizeBytes {
             Var => "Var"
         }
     }
+
+    /// Returns the maximum possible length available with a SizeBytes variant.
+    pub const fn maximum(&self) -> u64 {
+        use SizeBytes::*;
+        match self {
+            One => 2_u64.pow(8) - 1,
+            Two => 2_u64.pow(16) - 1,
+            Four => 2_u64.pow(32) - 1,
+            Eight | Var => 2_u64.pow(64) - 1,
+        }
+    }
 }
 
-/// Similar to the [Serialize] trait, but for data structures with a variable 
+/// Similar to the [Serialize] trait, but for data structures with a variable
 /// length, like arrays, [Vec]s, and [String]s.
 pub trait SizedSerialize<W> : Serialize<W>
 where W: Write {
@@ -64,12 +75,12 @@ where W: Write {
     /// - `s` - The serializer that the data will be written to.
     /// - `size` - The number of elements to write.
     fn serialize_sized(&self, s: &mut Serializer<W>, size: usize) -> BinverseResult<()>;
-   
+
     /// Should return the current number of elements of the data structure.
     fn size(&self) -> usize;
 }
 
-/// Similar to the [Deserialize] trait, but for data structures with a variable 
+/// Similar to the [Deserialize] trait, but for data structures with a variable
 /// length, like arrays, [Vec]s, and [String]s.
 pub trait SizedDeserialize<R> : Deserialize<R> + Sized
 where R: Read {
