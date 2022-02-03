@@ -1,6 +1,6 @@
 [package]
 name = "binverse_derive"
-version = "0.6.1"
+version = "0.6.2"
 authors = ["Linus Dikomey"]
 license = "MIT"
 readme = "README.md"
