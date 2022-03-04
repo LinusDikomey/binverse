@@ -83,19 +83,20 @@ impl<T, const N: usize> InitializingArray<T, N> {
         // SAFETY: we prevent the object from dropping by manually pulling out the fields.
         // Because we get all the fields, this is safe.
         // The array is also guaranteed to be fully initialized because of the assert above;
-        let v = unsafe {
+        unsafe {
             let inner = std::ptr::read(&self.inner);
             let _initialized_to = std::ptr::read(&self.initialized_to);
             std::mem::forget(self);
             ManuallyDrop::into_inner(inner)
-        };
-        v
+        }
     }
 }
 impl<T, const N: usize> Drop for InitializingArray<T, N> {
     fn drop(&mut self) {
         // only the initialized data is dropped
-        unsafe { std::ptr::drop_in_place(std::slice::from_raw_parts_mut(self.inner.as_mut_ptr(), self.initialized_to));};
+        unsafe {
+            std::ptr::drop_in_place(std::slice::from_raw_parts_mut(self.inner.as_mut_ptr(), self.initialized_to));
+        }
     }
 }
 
@@ -204,8 +205,18 @@ macro_rules! deser_sized {
     }
 }
 
-ser_sized!{ {&str [][]} {String [][]} {&[T] [T] [[T: Serialize<W>]]} {Vec<T> [T] [[T: Serialize<W>]]} {HashMap<K, V> [K, V] [[K: Serialize<W>, V: Serialize<W>]]} }
-deser_sized!{ {String [][]} {Vec<T> [T] [[T: Deserialize<R>]]} {HashMap<K, V> [K, V] [[K: Deserialize<R> + Eq + Hash, V: Deserialize<R>]]} }
+ser_sized!{
+    {&str [][]}
+    {String [][]}
+    {&[T] [T] [[T: Serialize<W>]]}
+    {Vec<T> [T] [[T: Serialize<W>]]}
+    {HashMap<K, V> [K, V] [[K: Serialize<W>, V: Serialize<W>]]}
+}
+deser_sized!{
+    {String [][]}
+    {Vec<T> [T] [[T: Deserialize<R>]]}
+    {HashMap<K, V> [K, V] [[K: Deserialize<R> + Eq + Hash, V: Deserialize<R>]]}
+}
 
 impl<W: Write> SizedSerialize<W> for String {
     fn serialize_sized(&self, s: &mut Serializer<W>, size: usize) -> BinverseResult<()> {

@@ -25,7 +25,7 @@ pub mod error;
 /// The revision is also written to the writer for data backwards compatiblity.
 /// 
 /// This is the counterpart to [read()].
-pub fn write<T: serialize::Serialize<W>, W: std::io::Write>(w: impl Into<W>, object: T, current_revision: u32) -> error::BinverseResult<W> {
+pub fn write<T: serialize::Serialize<W>, W: std::io::Write>(w: W, object: T, current_revision: u32) -> error::BinverseResult<W> {
     let mut s = streams::Serializer::new(w.into(), current_revision)?;
     object.serialize(&mut s)?;
     Ok(s.finish())
@@ -35,7 +35,7 @@ pub fn write<T: serialize::Serialize<W>, W: std::io::Write>(w: impl Into<W>, obj
 /// The revision is also read from the reader so old data can be read.
 /// 
 /// This is the counterpart to [write()].
-pub fn read<R: std::io::Read, T: serialize::Deserialize<R>>(r: impl Into<R>) -> error::BinverseResult<(T, R)> {
+pub fn read<R: std::io::Read, T: serialize::Deserialize<R>>(r: R) -> error::BinverseResult<(T, R)> {
     let mut d = streams::Deserializer::new(r.into())?;
     let t = d.deserialize()?;
     Ok((t, d.finish()))
@@ -48,7 +48,7 @@ pub fn read<R: std::io::Read, T: serialize::Deserialize<R>>(r: impl Into<R>) -> 
 /// This can be used when the data won't change in the future or the revision can be implied from context when reading.
 /// 
 /// This is the counterpart to [read_no_revision()].
-pub fn write_no_revision<T: serialize::Serialize<W>, W: std::io::Write>(w: impl Into<W>, object: T) -> error::BinverseResult<W> {
+pub fn write_no_revision<T: serialize::Serialize<W>, W: std::io::Write>(w: W, object: T) -> error::BinverseResult<W> {
     let mut s = streams::Serializer::new_no_revision(w.into());
     object.serialize(&mut s)?;
     Ok(s.finish())
@@ -58,7 +58,7 @@ pub fn write_no_revision<T: serialize::Serialize<W>, W: std::io::Write>(w: impl 
 /// [Deserializer](streams::Deserializer) instead. The `revision` has to be supplied as a parameter.
 /// This can be used when the data won't change in the future or the revision can be implied from context when reading.
 /// This is the counterpart to [write_no_revision].
-pub fn read_no_revision<R: std::io::Read, T: serialize::Deserialize<R>>(r: impl Into<R>, revision: u32) -> error::BinverseResult<(T, R)> {
+pub fn read_no_revision<R: std::io::Read, T: serialize::Deserialize<R>>(r: R, revision: u32) -> error::BinverseResult<(T, R)> {
     let mut d = streams::Deserializer::new_no_revision(r.into(), revision);
     let t = d.deserialize()?;
     Ok((t, d.finish()))

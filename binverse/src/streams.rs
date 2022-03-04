@@ -51,9 +51,8 @@ impl<W: Write> Serializer<W> {
 
     /// Serialize a sized data structure. Use the `size_bytes` parameter to
     /// control how many bytes are used to serialize the size of the data structure.
-    /// Note that any elements exceeding the size will not be serialized.
-    /// For example, a [Vec] with 258 elements will lose it's last 3 elements
-    /// when using [SizeBytes::One].
+    /// An error will be returned when the size doesn't fit into the amount of bytes provided.
+    /// For example, serializing a [Vec] with 258 elements will fail when using [SizeBytes::One].
     pub fn serialize_sized<T: SizedSerialize<W>>(&mut self, size_bytes: SizeBytes, t: &T) -> BinverseResult<()> {
         let size = t.size();
         self.write_size(size_bytes, size)?;

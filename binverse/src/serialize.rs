@@ -21,7 +21,7 @@ pub trait Deserialize<R: Read> : Sized {
 }
 
 /// An enum representing the possible lengths of the size bytes for a variable
-/// length data sreucture.
+/// length data structure.
 #[derive(Clone, Copy, Debug)]
 pub enum SizeBytes {
     /// The length is serialized using a single byte ([u8]).
@@ -57,10 +57,10 @@ impl SizeBytes {
     pub const fn maximum(&self) -> u64 {
         use SizeBytes::*;
         match self {
-            One => 2_u64.pow(8) - 1,
-            Two => 2_u64.pow(16) - 1,
-            Four => 2_u64.pow(32) - 1,
-            Eight | Var => 2_u64.pow(64) - 1,
+            One => u8::MAX as u64,
+            Two => u16::MAX as u64,
+            Four => u32::MAX as u64,
+            Eight | Var => u64::MAX,
         }
     }
 }
