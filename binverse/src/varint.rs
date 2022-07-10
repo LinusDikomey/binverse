@@ -38,6 +38,7 @@ pub fn write<W: Write>(mut x: u64, mut w: W) -> Result<(), BinverseError> {
 
 /// Convenience wrapper type to read and write varints.
 #[repr(transparent)]
+#[derive(Debug, Clone, Copy, Hash, Default, PartialEq, Eq, PartialOrd, Ord)]
 pub struct VarInt(pub u64);
 impl<W: Write> Serialize<W> for VarInt {
     fn serialize(&self, s: &mut crate::streams::Serializer<W>) -> BinverseResult<()> {
