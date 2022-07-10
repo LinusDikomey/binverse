@@ -21,6 +21,8 @@ pub mod varint;
 /// BinverseError as well as a BinverseResult type alias.
 pub mod error;
 
+pub use binverse_derive::serializable;
+
 /// Writes a single object to a writer. When writing multiple objects, use [Serializer](streams::Serializer) instead.
 /// The revision is also written to the writer for data backwards compatiblity.
 /// 

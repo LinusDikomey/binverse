@@ -4,7 +4,8 @@ use crate::{error::{BinverseError, BinverseResult}, serialize::{Deserialize, Ser
 
 /// A serializer used to write serialized data to the writer.
 pub struct Serializer<W: Write> {
-    pub(crate) w: W,
+    /// The underlying writer.
+    pub w: W,
 }
 impl<W: Write> Serializer<W> {
     /// Creates a new serializer. The revision will be written to the data to
@@ -65,7 +66,8 @@ impl<W: Write> Serializer<W> {
 /// Reads previously serialized data from a reader. Note that all calls must be
 /// the opposite from the calls used when serializing so the data matches.
 pub struct Deserializer<R: Read> {
-    pub(crate) r: R,
+    /// The underlying reader. 
+    pub r: R,
     revision: u32
 }
 
