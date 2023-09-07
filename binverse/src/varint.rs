@@ -40,13 +40,13 @@ pub fn write<W: Write>(mut x: u64, mut w: W) -> Result<(), BinverseError> {
 #[repr(transparent)]
 #[derive(Debug, Clone, Copy, Hash, Default, PartialEq, Eq, PartialOrd, Ord)]
 pub struct VarInt(pub u64);
-impl<W: Write> Serialize<W> for VarInt {
-    fn serialize(&self, s: &mut crate::streams::Serializer<W>) -> BinverseResult<()> {
+impl Serialize for VarInt {
+    fn serialize<W: Write>(&self, s: &mut crate::streams::Serializer<W>) -> BinverseResult<()> {
         write(self.0, &mut s.w)
     }
 }
-impl<R: Read> Deserialize<R> for VarInt {
-    fn deserialize(d: &mut crate::streams::Deserializer<R>) -> BinverseResult<Self> {
+impl Deserialize for VarInt {
+    fn deserialize<R: Read>(d: &mut crate::streams::Deserializer<R>) -> BinverseResult<Self> {
         read(&mut d.r).map(Self)
     }
 }

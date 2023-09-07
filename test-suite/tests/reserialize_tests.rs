@@ -3,7 +3,7 @@ use std::{fmt::Debug, io::Cursor, collections::HashMap};
 use binverse::{serialize::{Deserialize, Serialize, SizeBytes, SizedSerialize, SizedDeserialize}, streams::{Deserializer, Serializer}, error::BinverseError};
 use binverse_derive::serializable;
 
-fn reserialize_test<T : Serialize<Vec<u8>> + Deserialize<Cursor<Vec<u8>>> + PartialEq + Debug>(val: T) {
+fn reserialize_test<T : Serialize + Deserialize + PartialEq + Debug>(val: T) {
     let mut s = Serializer::new(Vec::new(), 0).unwrap();
     val.serialize(&mut s).unwrap();
     let buf = s.finish();
@@ -15,7 +15,7 @@ fn reserialize_test<T : Serialize<Vec<u8>> + Deserialize<Cursor<Vec<u8>>> + Part
     assert_eq!(finished.into_inner().len() as u64 - pos, 0, "leftover bytes after deserialing");
 }
 
-fn reserialize_sized_test<'a, T : SizedSerialize<Vec<u8>> + SizedDeserialize<Cursor<Vec<u8>>> + PartialEq + Debug>(val: T, sb: SizeBytes) {
+fn reserialize_sized_test<'a, T : SizedSerialize + SizedDeserialize + PartialEq + Debug>(val: T, sb: SizeBytes) {
     let mut s = Serializer::new(Vec::new(), 0).unwrap();
     s.serialize_sized(sb, &val).unwrap();
     let buf = s.finish();
@@ -28,7 +28,7 @@ fn reserialize_sized_test<'a, T : SizedSerialize<Vec<u8>> + SizedDeserialize<Cur
 }
 
 fn test_all<'a, T>(vals: &[T]) 
-where T : Serialize<Vec<u8>> + Deserialize<Cursor<Vec<u8>>> + PartialEq + Debug + Clone {
+where T : Serialize + Deserialize + PartialEq + Debug + Clone {
     for val in vals {
         reserialize_test(val.clone());
     }

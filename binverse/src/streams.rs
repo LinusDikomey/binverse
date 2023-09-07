@@ -54,7 +54,7 @@ impl<W: Write> Serializer<W> {
     /// control how many bytes are used to serialize the size of the data structure.
     /// An error will be returned when the size doesn't fit into the amount of bytes provided.
     /// For example, serializing a [Vec] with 258 elements will fail when using [SizeBytes::One].
-    pub fn serialize_sized<T: SizedSerialize<W>>(&mut self, size_bytes: SizeBytes, t: &T) -> BinverseResult<()> {
+    pub fn serialize_sized<T: SizedSerialize>(&mut self, size_bytes: SizeBytes, t: &T) -> BinverseResult<()> {
         let size = t.size();
         self.write_size(size_bytes, size)?;
         t.serialize_sized(self, size)
@@ -111,11 +111,11 @@ impl<R: Read> Deserializer<R> {
 
     /// Deserializes something. The type has to be known and has to match the
     /// type that was serialized previously.
-    pub fn deserialize<T: Deserialize<R>>(&mut self) -> BinverseResult<T> { T::deserialize(self) }
+    pub fn deserialize<T: Deserialize>(&mut self) -> BinverseResult<T> { T::deserialize(self) }
 
     /// Deserializes a data structure with a size. Type and size_bytes have to
     /// match the serialized data structure.
-    pub fn deserialize_sized<T: SizedDeserialize<R>>(&mut self, size_bytes: SizeBytes) -> BinverseResult<T> {
+    pub fn deserialize_sized<T: SizedDeserialize>(&mut self, size_bytes: SizeBytes) -> BinverseResult<T> {
         let size = self.read_size(size_bytes)?;
         T::deserialize_sized(self, size)
     }
