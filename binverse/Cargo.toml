@@ -15,4 +15,4 @@ edition = "2021"
 [features]
 
 [dependencies]
-binverse_derive = { version = "=0.6.2", path = "../binverse_derive" }
+binverse_derive = { version = "=0.7.0", path = "../binverse_derive" }
