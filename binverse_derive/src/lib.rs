@@ -2,7 +2,6 @@
 //! `#\[serializable\]` automatically implements Serialize and Deserialize
 //! and can parse some attributes related to versioning and data structure sizes.
 
-#![feature(proc_macro_diagnostic)]
 #![warn(missing_docs)]
 
 use proc_macro::TokenStream;
